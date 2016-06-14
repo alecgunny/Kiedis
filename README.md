@@ -2,7 +2,7 @@ get_data.py mine's the Red Hot Chili Peppers'page on azlyrics.com and rips the t
 
 main.py rips off a keras example for Nietzsche text generation, and tends to perform much worse with worse overfitting.  main2.py is the updated version that does a lot more to randomize and speed up the training process to perform more robustly and avoid overfitting.
 
-*Future Development*
+# Future Development
 
 -Cleaning up the data (rerunning get_data.py and figuring out the BadStatusLine error it throws sometimes now.  It's possible that azlyrics.com shuts out ip addresses it thinks are running in an automated fashion)
 
