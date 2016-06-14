@@ -1,8 +1,11 @@
 # Kiedis
 
 Pipeline for training an LSTM to generate Red Hot Chili Pepper lyrics, adapted from a similar tutorial from keras, which is the key dependency for running.  If you have keras installed (preferably with a gpu backend), just execute
+
 		python main.py
+
 from the command line, or preferably enter an iPython terminal and execute
+
 		run main.py
 
 This will generate data (if it does not already exist in the folder) by mining the lyrics from all RHCP pages on azlyrics.com, then train an RNN on this data to perform character prediction from input character sequences.
