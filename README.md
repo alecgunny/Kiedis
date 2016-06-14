@@ -1,6 +1,11 @@
-get_data.py mine's the Red Hot Chili Peppers'page on azlyrics.com and rips the text from every song that doesn't toss it an error.  Probably much better ways to handle this.
+# Kiedis
 
-main.py rips off a keras example for Nietzsche text generation, and tends to perform much worse with worse overfitting.  main2.py is the updated version that does a lot more to randomize and speed up the training process to perform more robustly and avoid overfitting.
+Pipeline for training an LSTM to generate Red Hot Chili Pepper lyrics, adapted from a similar tutorial from keras, which is the key dependency for running.  If you have keras installed (preferably with a gpu backend), just execute
+		python main.py
+from the command line, or preferably enter an iPython terminal and execute
+		run main.py
+
+This will generate data (if it does not already exist in the folder) by mining the lyrics from all RHCP pages on azlyrics.com, then train an RNN on this data to perform character prediction from input character sequences.
 
 # Future Development
 
@@ -12,7 +17,7 @@ main.py rips off a keras example for Nietzsche text generation, and tends to per
 
 -Use final hidden state from passing an entire song as a sequence for stuff like clustering, etc. to explore impacts on or applications to a "lyrics space"
 
-		-tSNE 2D embeddings?
+	-tSNE 2D embeddings?
 
 -generalize get_data to run for arbitrary artists on azlyrics.com
 
