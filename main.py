@@ -3,14 +3,22 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from get_data import get_all_lyrics
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Dropout
+from keras.models import Model
+from keras.layers import Dense, Activation, Masking, Input, Dropout
 from keras.layers import LSTM
 from keras.utils.data_utils import get_file
 import numpy as np
 import random
 
+#if we don't have data, make some
 path = 'rhcp_lyrics.txt'
+if not os.path.exists(path):
+	print("Compiling lyrics")
+	lyrics = get_all_lyrics()
+	with open(path, 'w') as f:
+		f.write(lyrics)
+
+#read in the data
 text = open(path).read().lower()
 print('corpus length:', len(text))
 
@@ -18,36 +26,48 @@ chars = set(text)
 print('total chars:', len(chars))
 char_indices = dict((c, i) for i, c in enumerate(chars))
 indices_char = dict((i, c) for i, c in enumerate(chars))
+transform_chars = lambda x: char_indices[x]
+transform_ints = lambda x: indices_char[x]
 
-# cut the text in semi-redundant sequences of maxlen characters
+#transform the corpus into a series of integers that can be used
+#as indices to slice an array of one-hot vectors
+print("Transforming corpus...")
+int_text = map(transform_chars, text)
+vectors = np.eye(len(chars)).astype('float32')
+
+#define some training parameters and create a generator that builds
+#training data on the fly
 maxlen = 40
-step = 3
-sentences = []
-next_chars = []
-for i in range(0, len(text) - maxlen, step):
-    sentences.append(text[i: i + maxlen])
-    next_chars.append(text[i + maxlen])
-print('nb sequences:', len(sentences))
-
-print('Vectorization...')
-X = np.zeros((len(sentences), maxlen, len(chars)), dtype=np.bool)
-y = np.zeros((len(sentences), len(chars)), dtype=np.bool)
-for i, sentence in enumerate(sentences):
-    for t, char in enumerate(sentence):
-        X[i, t, char_indices[char]] = 1
-    y[i, char_indices[next_chars[i]]] = 1
-
+minlen = 15
+batch_size = 128
+step_size = 3
+batches_per_epoch = (len(text) // step_size) // batch_size + 1
+def TrainGen():
+    #randomly select slices from the text of size somewhere between
+    #minlen and maxlen
+    while True:
+        batch_x = np.zeros((batch_size, maxlen, len(chars)), dtype='float32')
+        batch_y = np.zeros((batch_size, len(chars)), dtype='float32')
+        for b in range(batch_size):
+            length = np.random.randint(minlen, maxlen+1)
+            idx = np.random.randint(len(text) - length)
+            ints = int_text[idx: idx+length]
+            batch_x[b, :length] = vectors[ints]
+            batch_y[b] = vectors[int_text[idx+length]]
+        yield batch_x, batch_y
 
 # build the model: 2 stacked LSTM
 print('Build model...')
-model = Sequential()
-model.add(LSTM(512, return_sequences=True, input_shape=(maxlen, len(chars))))
-model.add(Dropout(0.2))
-model.add(LSTM(512, return_sequences=False))
-model.add(Dropout(0.2))
-model.add(Dense(len(chars)))
-model.add(Activation('softmax'))
+input_shape = (None, len(chars))
+lstm_kwargs = dict(init='glorot_uniform', forget_bias_init='one')
 
+input = Input(input_shape, dtype='float32')
+masking = Masking(0)(input)
+lstm1 = LSTM(512, dropout_W=0.1, dropout_U=0.25, return_sequences=True, **lstm_kwargs)(masking)
+lstm2 = LSTM(512, dropout_W=0.25, dropout_U=0.25, return_sequences=False, **lstm_kwargs)(lstm1)
+dropout = Dropout(0.25)(lstm2)
+dense = Dense(len(chars), init='glorot_uniform', activation='softmax')(dropout)
+model = Model(input=input, output=dense)
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
 
@@ -62,7 +82,7 @@ for iteration in range(1, 60):
     print()
     print('-' * 50)
     print('Iteration', iteration)
-    model.fit(X, y, batch_size=128, nb_epoch=1)
+    model.fit_generator(TrainGen(), samples_per_epoch=batch_size*batches_per_epoch, nb_epoch=1)
 
     start_index = random.randint(0, len(text) - maxlen - 1)
 
@@ -71,23 +91,18 @@ for iteration in range(1, 60):
         print('----- diversity:', diversity)
 
         generated = ''
-        sentence = text[start_index: start_index + maxlen]
-        generated += sentence
-        print('----- Generating with seed: "' + sentence + '"')
+        sentence = list(int_text[start_index: start_index + maxlen])
+        generated += ''.join(map(transform_ints, sentence))
+        print('----- Generating with seed: "' + generated + '"')
         sys.stdout.write(generated)
 
         for i in range(400):
-            x = np.zeros((1, maxlen, len(chars)))
-            for t, char in enumerate(sentence):
-                x[0, t, char_indices[char]] = 1.
-
+            x = vectors[sentence[-maxlen:]][np.newaxis]
             preds = model.predict(x, verbose=0)[0]
             next_index = sample(preds, diversity)
             next_char = indices_char[next_index]
-
             generated += next_char
-            sentence = sentence[1:] + next_char
-
+            sentence.append(next_index)
             sys.stdout.write(next_char)
             sys.stdout.flush()
         print()
