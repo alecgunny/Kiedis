@@ -13,8 +13,11 @@ This will generate data (if it does not already exist in the folder) by mining t
 # Future Development
 
 * Cleaning up the data (rerunning get_data.py and figuring out the BadStatusLine error it throws sometimes now.  It's possible that azlyrics.com shuts out ip addresses it thinks are running in an automated fashion)
+
 * Training a model on a larger dataset to give it the basics of English, then fine-tuning on Anthony Kiedis lyrics
+
 * Explore randomization of sequence length during text generation.  Also narrow down grid search of best temperature values, clearly somewhere between 0.5 and 1
+
 * Use final hidden state from passing an entire song as a sequence for stuff like clustering, etc. to explore impacts on or applications to a "lyrics space"
 	* tSNE 2D embeddings?
 
