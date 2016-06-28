@@ -55,12 +55,23 @@ def TrainGen():
         yield batch_x, batch_y
 
 
-def predict(sentence, model, maxlen=maxlen):
-	'make a single prediction on a given sentence'
+def predict(sentence, model, maxlen=maxlen, num_lens=5):
+	'''
+    make a single prediction on a given sentence.  Averages over predictions
+    made on num_lens sequences of increasing sequence lengths.  Probably
+    a much smarter and more flexible way of doing this (weighted averaging,
+    supplying lengths, etc.)
+    '''
+    if num_lens == 1:
+        lens = [maxlen]
+    else:
+        lens = np.floor(np.linspace(minlen, maxlen, num_lens)).astype('int')
 	if isinstance(sentence, str):
 		sentence = map(transform_chars, sentence)
-	x = vectors[sentence[-maxlen:]][np.newaxis]
-	return model.predict(x, verbose=0)[0]
+    x = np.zeros((num_lens, maxlen, len(chars)))
+    for n, l in enumerate(lens):
+	   x[n] = vectors[sentence[-l:]][np.newaxis]
+	return model.predict(x, verbose=0).mean(0)
 
 
 def generate_text(seed, model, iters=400):
