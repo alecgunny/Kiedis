@@ -13,7 +13,7 @@ import random
 path = 'rhcp_lyrics.txt'
 if not os.path.exists(path):
 	print("Compiling lyrics")
-	lyrics = get_all_lyrics()
+	lyrics = get_all_lyrics(sleep_time=1)
 	with open(path, 'w') as f:
 		f.write(lyrics)
 
@@ -47,11 +47,11 @@ def TrainGen():
         batch_x = np.zeros((batch_size, maxlen, len(chars)), dtype='float32')
         batch_y = np.zeros((batch_size, len(chars)), dtype='float32')
         for b in range(batch_size):
-            length = np.random.randint(minlen, maxlen+1)
-            idx = np.random.randint(len(text) - length)
-            ints = int_text[idx: idx+length]
-            batch_x[b, :length] = vectors[ints]
-            batch_y[b] = vectors[int_text[idx+length]]
+            length = np.random.randint(minlen, maxlen+1) # random text length
+            idx = np.random.randint(len(text) - length) # sampled at a random point in the text
+            ints = int_text[idx: idx+length] # grab the integer codes of the characters
+            batch_x[b, -length:] = vectors[ints] # insert corresponding vectors into our blank input
+            batch_y[b] = vectors[int_text[idx+length]] # insert vector corresponding to the next character to our target
         yield batch_x, batch_y
 
 
@@ -62,15 +62,20 @@ def predict(sentence, model, maxlen=maxlen, num_lens=5):
     a much smarter and more flexible way of doing this (weighted averaging,
     supplying lengths, etc.)
     '''
-    if num_lens == 1:
-        lens = [maxlen]
-    else:
-        lens = np.floor(np.linspace(minlen, maxlen, num_lens)).astype('int')
+	maxlen = min(maxlen, len(sentence))
+	if num_lens == 1:
+		lengths = [maxlen]
+	else:
+		lengths = np.floor(np.linspace(minlen, maxlen, num_lens)).astype('int')
+
+	sentence = sentence[-maxlen:]
 	if isinstance(sentence, str):
 		sentence = map(transform_chars, sentence)
-    x = np.zeros((num_lens, maxlen, len(chars)))
-    for n, l in enumerate(lens):
-	   x[n] = vectors[sentence[-l:]][np.newaxis]
+
+    #build a blank array and then populate it
+	x = np.zeros((num_lens, maxlen, len(chars)))
+	for n, length in enumerate(lengths):
+		x[n, -length:] = vectors[sentence[-length:]][np.newaxis]
 	return model.predict(x, verbose=0).mean(0)
 
 
@@ -94,10 +99,10 @@ def generate_text(seed, model, iters=400):
 
 
 def sample(a, temperature=1.0):
-    'helper function to sample an index from a probability array'
-    a = np.log(a) / temperature
-    a = np.exp(a) / np.sum(np.exp(a))
-    return np.argmax(np.random.multinomial(1, a, 1))
+	'helper function to sample an index from a probability array'
+	a = np.log(a) / temperature
+	a = np.exp(a) / np.sum(np.exp(a))
+	return np.argmax(np.random.multinomial(1, a, 1))
 #------------------------------------------------------------------------------
 
 
@@ -136,6 +141,6 @@ for iteration in range(1, 60):
         generated = text[start_index: start_index + maxlen]
         print('----- Generating with seed: "' + generated + '"')
         sys.stdout.write(generated)
-        generate_text(generated)
+        generate_text(generated, model)
 
         print()

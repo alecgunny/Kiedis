@@ -1,6 +1,7 @@
 from six.moves import urllib
 #import urllib2
 from bs4 import BeautifulSoup as bs
+import time
 
 def parse_lyrics(html):
 	lyrics = ''
@@ -35,7 +36,8 @@ def parse_lyrics(html):
 	return lyrics
 
 
-def get_all_lyrics(home_page='http://www.azlyrics.com/r/redhotchilipeppers.html'):
+def get_all_lyrics(home_page='http://www.azlyrics.com/r/redhotchilipeppers.html',
+				   sleep_time=None):
 	# opener = urllib2.build_opener()
 
 	# headers = {
@@ -61,9 +63,13 @@ def get_all_lyrics(home_page='http://www.azlyrics.com/r/redhotchilipeppers.html'
 			lyrics += parse_lyrics(lyrics_page) + " "
 		except:
 			print "Encountered error on url %s, skipping..." % new_url
+		# wait a moment to avoid having your trawling noticed by azlyrics and getting booted
+		# better solution would be to server proxy, but that seems like a little much
+		if sleep_time is not None:
+			time.sleep(sleep_time)
 	return lyrics
 
 if __name__ == "__main__":
-	lyrics = get_all_lyrics()
+	lyrics = get_all_lyrics(sleep_time=1)
 	with open('rhcp_lyrics.txt', 'w') as f:
 		f.write(lyrics)
